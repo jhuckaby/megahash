@@ -255,8 +255,9 @@ module.exports = {
 			hash.clear();
 			
 			var stats = hash.stats();
-			test.ok(stats.numKeys === 0, '0 keys in stats');
-			test.ok(stats.dataSize === 0, '0 bytes in data store');
+			test.ok(stats.numKeys === 0, '0 keys in stats: ' + stats.numKeys);
+			test.ok(stats.dataSize === 0, '0 bytes in data store: ' + stats.dataSize);
+			test.ok(stats.metaSize === 0, '0 bytes in meta store: ' + stats.metaSize);
 			test.ok(stats.numIndexes === 1, '1 index in stats');
 			
 			test.done();

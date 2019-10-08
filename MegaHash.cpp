@@ -316,7 +316,7 @@ void Hash::clearTag(Tag *tag) {
 			bucket = bucket->next;
 			
 			stats->dataSize -= (bucketGetKeyLength(lastBucket->data) + bucketGetContentLength(lastBucket->data));
-			stats->metaSize -= sizeof(Bucket);
+			stats->metaSize -= (sizeof(Bucket) + BH_KLEN_SIZE + BH_LEN_SIZE);
 			stats->numKeys--;
 			
 			free(lastBucket->data);
