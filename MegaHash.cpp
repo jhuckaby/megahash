@@ -19,9 +19,10 @@ Response Hash::store(unsigned char *key, BH_KLEN_T keyLength, unsigned char *con
 	
 	// combine key and content together, with length prefixes, into single blob
 	// this reduces malloc bashing and memory frag
-	BH_LEN_T payloadSize = BH_KLEN_SIZE + keyLength + BH_LEN_SIZE + contentLength;
-	BH_LEN_T offset = 0;
+	BH_LEN_T payloadSize = sizeof(Bucket) + BH_KLEN_SIZE + keyLength + BH_LEN_SIZE + contentLength;
+	BH_LEN_T offset = sizeof(Bucket);
 	unsigned char *payload = (unsigned char *)malloc(payloadSize);
+	
 	memcpy( (void *)&payload[offset], (void *)&keyLength, BH_KLEN_SIZE ); offset += BH_KLEN_SIZE;
 	memcpy( (void *)&payload[offset], (void *)key, keyLength ); offset += keyLength;
 	memcpy( (void *)&payload[offset], (void *)&contentLength, BH_LEN_SIZE ); offset += BH_LEN_SIZE;
@@ -40,8 +41,8 @@ Response Hash::store(unsigned char *key, BH_KLEN_T keyLength, unsigned char *con
 		tag = level->data[ch];
 		if (!tag) {
 			// create new bucket list here
-			bucket = new Bucket();
-			bucket->data = payload;
+			bucket = (Bucket *)payload;
+			bucket->init();
 			bucket->flags = flags;
 			level->data[ch] = (Tag *)bucket;
 			
@@ -57,26 +58,25 @@ Response Hash::store(unsigned char *key, BH_KLEN_T keyLength, unsigned char *con
 			lastBucket = NULL;
 			
 			while (bucket) {
-				if (bucketKeyEquals(bucket->data, key, keyLength)) {
+				if (bucketKeyEquals(bucket, key, keyLength)) {
 					// replace
-					newBucket = new Bucket();
-					newBucket->data = payload;
+					newBucket = (Bucket *)payload;
+					newBucket->init();
 					newBucket->flags = flags;
 					if (lastBucket) lastBucket->next = newBucket;
 					else level->data[ch] = (Tag *)newBucket;
 					
 					resp.result = BH_REPLACE;
-					stats->dataSize -= (bucketGetKeyLength(bucket->data) + bucketGetContentLength(bucket->data));
+					stats->dataSize -= (bucketGetKeyLength(bucket) + bucketGetContentLength(bucket));
 					stats->dataSize += keyLength + contentLength;
 					
-					free(bucket->data);
-					delete bucket;
+					free((void *)bucket);
 					bucket = NULL; // break
 				}
 				else if (!bucket->next) {
 					// append here
-					newBucket = new Bucket();
-					newBucket->data = payload;
+					newBucket = (Bucket *)payload;
+					newBucket->init();
 					newBucket->flags = flags;
 					bucket->next = newBucket;
 					resp.result = BH_ADD;
@@ -124,8 +124,8 @@ Response Hash::store(unsigned char *key, BH_KLEN_T keyLength, unsigned char *con
 void Hash::reindexBucket(Bucket *bucket, Index *index, unsigned char digestIndex) {
 	// reindex existing bucket into new subindex level
 	unsigned char digest[BH_DIGEST_SIZE];
-	BH_KLEN_T keyLength = bucketGetKeyLength(bucket->data);
-	unsigned char *key = bucket->data + BH_KLEN_SIZE;
+	BH_KLEN_T keyLength = bucketGetKeyLength(bucket);
+	unsigned char *key = bucketGetKey(bucket);
 	digestKey(key, keyLength, digest);
 	unsigned char ch = digest[digestIndex];
 	
@@ -161,6 +161,9 @@ Response Hash::fetch(unsigned char *key, BH_KLEN_T keyLength) {
 	Index *level;
 	Bucket *bucket;
 	
+	unsigned char *bucketData;
+	unsigned char *tempCL;
+	
 	while (tag && (tag->type == BH_SIG_INDEX)) {
 		level = (Index *)tag;
 		ch = digest[digestIndex];
@@ -175,11 +178,15 @@ Response Hash::fetch(unsigned char *key, BH_KLEN_T keyLength) {
 			bucket = (Bucket *)tag;
 			
 			while (bucket) {
-				if (bucketKeyEquals(bucket->data, key, keyLength)) {
+				if (bucketKeyEquals(bucket, key, keyLength)) {
 					// found!
+					bucketData = ((unsigned char *)bucket) + sizeof(Bucket);
+					tempCL = bucketData + BH_KLEN_SIZE + keyLength;
+					
 					resp.result = BH_OK;
-					resp.content = bucketGetContent(bucket->data);
-					resp.contentLength = bucketGetContentLength(bucket->data);
+					resp.contentLength = ((BH_LEN_T *)tempCL)[0];
+					resp.content = bucketData + BH_KLEN_SIZE + keyLength + BH_LEN_SIZE;
+					
 					resp.flags = bucket->flags;
 					bucket = NULL; // break
 				}
@@ -233,9 +240,9 @@ Response Hash::remove(unsigned char *key, BH_KLEN_T keyLength) {
 			lastBucket = NULL;
 			
 			while (bucket) {
-				if (bucketKeyEquals(bucket->data, key, keyLength)) {
+				if (bucketKeyEquals(bucket, key, keyLength)) {
 					// found!
-					stats->dataSize -= (bucketGetKeyLength(bucket->data) + bucketGetContentLength(bucket->data));
+					stats->dataSize -= (bucketGetKeyLength(bucket) + bucketGetContentLength(bucket));
 					stats->metaSize -= (sizeof(Bucket) + BH_KLEN_SIZE + BH_LEN_SIZE);
 					stats->numKeys--;
 					
@@ -243,8 +250,7 @@ Response Hash::remove(unsigned char *key, BH_KLEN_T keyLength) {
 					else level->data[ch] = bucket->next;
 					
 					resp.result = BH_OK;
-					free(bucket->data);
-					delete bucket;
+					free((void *)bucket);
 					bucket = NULL; // break
 				}
 				else if (!bucket->next) {
@@ -278,13 +284,38 @@ void Hash::clear() {
 	}
 }
 
-void Hash::clear(unsigned char idx) {
-	// clear one "slice" from main index (about 1/16 of total keys)
-	// this is so you can split up the job into pieces and not stall the event loop for too long
-	if (idx >= BH_INDEX_SIZE) return;
-	if (index->data[idx]) {
-		clearTag( index->data[idx] );
-		index->data[idx] = NULL;
+void Hash::clear(unsigned char slice) {
+	// clear one "slice" from main index (about 1/256 of total keys)
+	// this is so you can split up the job into pieces and not hang the CPU for too long
+	unsigned char slice1 = slice / 16;
+	unsigned char slice2 = slice % 16;
+	
+	// since our index system is 4-bit, we split the uchar into two pieces
+	// and traverse into a nested index for the 2nd piece, if applicable
+	if (index->data[slice1]) {
+		Tag *tag = index->data[slice1];
+		if (tag->type == BH_SIG_INDEX) {
+			// nested index, use idx2
+			Index *level = (Index *)tag;
+			if (level->data[slice2]) {
+				clearTag( level->data[slice2] );
+				level->data[slice2] = NULL;
+			}
+			
+			// also clear top-level index if it is now empty
+			int empty = 1;
+			for (int idx = 0; idx < BH_INDEX_SIZE; idx++) {
+				if (level->data[idx]) { empty = 0; idx = BH_INDEX_SIZE; }
+			}
+			if (empty) {
+				clearTag( tag );
+				index->data[slice1] = NULL;
+			}
+		}
+		else if (tag->type == BH_SIG_BUCKET) {
+			clearTag( tag );
+			index->data[slice1] = NULL;
+		}
 	}
 }
 
@@ -315,12 +346,11 @@ void Hash::clearTag(Tag *tag) {
 			lastBucket = bucket;
 			bucket = bucket->next;
 			
-			stats->dataSize -= (bucketGetKeyLength(lastBucket->data) + bucketGetContentLength(lastBucket->data));
+			stats->dataSize -= (bucketGetKeyLength(lastBucket) + bucketGetContentLength(lastBucket));
 			stats->metaSize -= (sizeof(Bucket) + BH_KLEN_SIZE + BH_LEN_SIZE);
 			stats->numKeys--;
 			
-			free(lastBucket->data);
-			delete lastBucket;
+			free((void *)lastBucket);
 		}
 	}
 }
@@ -374,11 +404,11 @@ void Hash::traverseTag(Response *resp, Tag *tag, unsigned char *key, BH_KLEN_T k
 			if (returnNext[0]) {
 				// return whatever key we landed on (repurpose the response content for this)
 				resp->result = BH_OK;
-				resp->content = bucketGetKey(bucket->data);
-				resp->contentLength = bucketGetKeyLength(bucket->data);
+				resp->content = bucketGetKey(bucket);
+				resp->contentLength = bucketGetKeyLength(bucket);
 				bucket = NULL; // break;
 			}
-			else if (bucketKeyEquals(bucket->data, key, keyLength)) {
+			else if (bucketKeyEquals(bucket, key, keyLength)) {
 				// found target key, return next one
 				returnNext[0] = 1;
 				

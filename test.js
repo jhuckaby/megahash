@@ -214,7 +214,9 @@ module.exports = {
 			var hash = new MegaHash();
 			hash.set("key1", "value1");
 			hash.set("key2", "value2");
-			hash.remove("key1");
+			
+			test.ok( !!hash.remove("key1"), "remove returned true for good key" );
+			test.ok( !hash.remove("key3"), "remove returned false for missing key" );
 			
 			test.ok( !hash.has("key1"), "Key1 was removed" );
 			test.ok( hash.has("key2"), "Key2 is still there" );
@@ -285,7 +287,7 @@ module.exports = {
 			}
 			
 			var lastNumKeys = hash.stats().numKeys;
-			for (var idx = 0; idx < 16; idx++) {
+			for (var idx = 0; idx < 256; idx++) {
 				hash.clear(idx);
 				var numKeys = hash.stats().numKeys;
 				test.ok( numKeys <= lastNumKeys, "numKeys is dropping" );
@@ -293,9 +295,9 @@ module.exports = {
 			}
 			
 			var stats = hash.stats();
-			test.ok(stats.numKeys === 0, '0 keys in stats');
-			test.ok(stats.dataSize === 0, '0 bytes in data store');
-			test.ok(stats.numIndexes === 1, '1 index in stats');
+			test.ok(stats.numKeys === 0, '0 keys in stats: ' + stats.numKeys);
+			test.ok(stats.dataSize === 0, '0 bytes in data store: ' + stats.dataSize);
+			test.ok(stats.numIndexes === 1, '1 index in stats: ' + stats.numIndexes);
 			
 			test.done();
 		},
@@ -419,6 +421,17 @@ module.exports = {
 			
 			var key = hash.nextKey();
 			test.ok( !key, "Nothing in empty hash" );
+			
+			test.done();
+		},
+		
+		function testKeyIterationBad(test) {
+			var hash = new MegaHash();
+			hash.set("key1", "value1");
+			hash.set("key2", "value2");
+			
+			var key = hash.nextKey("key3");
+			test.ok( !key, "nextKey found nothing with missing key" );
 			
 			test.done();
 		},

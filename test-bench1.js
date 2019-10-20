@@ -16,9 +16,9 @@ if (metrics_log_file) {
 var hash = new MegaHash();
 // var map = new Map();
 
-const MAX_KEYS = 8000000;
-const MAX_READS = 2000000;
-const METRICS_EVERY = 100000;
+const MAX_KEYS = 100000000;
+const MAX_READS = 4000000;
+const METRICS_EVERY = 1000000;
 
 print("\nMax Keys: " + Tools.commify(MAX_KEYS) + "\n");
 print("Max Reads: " + Tools.commify(MAX_READS) + "\n");

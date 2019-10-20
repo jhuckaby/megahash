@@ -77,6 +77,9 @@ public:
 	}
 };
 
+#pragma pack(push)  /* push current alignment to stack */
+#pragma pack(1)     /* set alignment to 1 byte boundary, saves 6 bytes per index/bucket */
+
 class Tag {
 public:
 	// a tag is a base class shared by indexes and buckets
@@ -90,6 +93,10 @@ public:
 	Tag *data[BH_INDEX_SIZE];
 	
 	Index() {
+		init();
+	}
+	
+	void init() {
 		type = BH_SIG_INDEX;
 		for (int idx = 0; idx < BH_INDEX_SIZE; idx++) data[idx] = NULL;
 	}
@@ -101,16 +108,20 @@ public:
 	// this is also a linked list, for collisions
 	// currently this is 24 bytes
 	unsigned char flags;
-	unsigned char *data;
 	Bucket *next;
 	
 	Bucket() {
+		init();
+	}
+	
+	void init() {
 		type = BH_SIG_BUCKET;
 		flags = 0;
-		data = NULL;
 		next = NULL;
 	}
 };
+
+#pragma pack(pop)   /* restore original alignment from stack */
 
 class Hash {
 public:
@@ -170,36 +181,38 @@ public:
 	void reindexBucket(Bucket *bucket, Index *index, unsigned char digestIndex);
 	void traverseTag(Response *resp, Tag *tag, unsigned char *key, BH_KLEN_T keyLength, unsigned char *digest, unsigned char digestIndex, unsigned char *returnNext);
 	
-	int bucketKeyEquals(unsigned char *bucketData, unsigned char *key, BH_KLEN_T keyLength) {
+	int bucketKeyEquals(Bucket *bucket, unsigned char *key, BH_KLEN_T keyLength) {
 		// compare key to bucket key
-		BH_KLEN_T bucketKeyLength = bucketGetKeyLength(bucketData);
+		unsigned char *bucketData = ((unsigned char *)bucket) + sizeof(Bucket);
+		if (keyLength != ((BH_KLEN_T *)bucketData)[0]) return 0;
 		unsigned char *bucketKey = bucketData + BH_KLEN_SIZE;
-		if (keyLength != bucketKeyLength) return 0;
 		return (int)!memcmp( (void *)key, (void *)bucketKey, (size_t)keyLength );
 	}
 	
-	BH_KLEN_T bucketGetKeyLength(unsigned char *bucketData) {
+	BH_KLEN_T bucketGetKeyLength(Bucket *bucket) {
 		// get bucket key length
+		unsigned char *bucketData = ((unsigned char *)bucket) + sizeof(Bucket);
 		BH_KLEN_T *tempKL = (BH_KLEN_T *)bucketData;
 		return tempKL[0];
 	}
 	
-	unsigned char *bucketGetKey(unsigned char *bucketData) {
+	unsigned char *bucketGetKey(Bucket *bucket) {
 		// get pointer to bucket key
+		unsigned char *bucketData = ((unsigned char *)bucket) + sizeof(Bucket);
 		return bucketData + BH_KLEN_SIZE;
 	}
 	
-	BH_LEN_T bucketGetContentLength(unsigned char *bucketData) {
+	BH_LEN_T bucketGetContentLength(Bucket *bucket) {
 		// get bucket content (value) length
-		BH_KLEN_T keyLength = bucketGetKeyLength(bucketData);
-		unsigned char *tempCL = bucketData + BH_KLEN_SIZE + keyLength;
+		unsigned char *bucketData = ((unsigned char *)bucket) + sizeof(Bucket);
+		unsigned char *tempCL = bucketData + BH_KLEN_SIZE + ((BH_KLEN_T *)bucketData)[0];
 		return ((BH_LEN_T *)tempCL)[0];
 	}
 	
-	unsigned char *bucketGetContent(unsigned char *bucketData) {
+	unsigned char *bucketGetContent(Bucket *bucket) {
 		// get pointer to bucket content (value)
-		BH_KLEN_T keyLength = bucketGetKeyLength(bucketData);
-		return bucketData + BH_KLEN_SIZE + keyLength + BH_LEN_SIZE;
+		unsigned char *bucketData = ((unsigned char *)bucket) + sizeof(Bucket);
+		return bucketData + BH_KLEN_SIZE + ((BH_KLEN_T *)bucketData)[0] + BH_LEN_SIZE;
 	}
 	
 	void digestKey(unsigned char *key, BH_KLEN_T keyLength, unsigned char *digest) {
