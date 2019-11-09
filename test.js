@@ -210,6 +210,14 @@ module.exports = {
 			test.done();
 		},
 		
+		function testSetReturnValue(test) {
+			// make sure set() returns the expected return values
+			var hash = new MegaHash();
+			test.ok( hash.set("hello", "there") == 1, "Unique key returns 1 on set" );
+			test.ok( hash.set("hello", "there") == 2, "Replaced key returns 2 on set" );
+			test.done();
+		},
+		
 		function testRemove(test) {
 			var hash = new MegaHash();
 			hash.set("key1", "value1");

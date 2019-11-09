@@ -10,39 +10,39 @@
 #define MAX(a,b) (((a)>(b))?(a):(b))
 
 /** Type used for key lengths. */
-#define BH_KLEN_T uint16_t
+#define MH_KLEN_T uint16_t
 /** Type used for value lengths. */
-#define BH_LEN_T uint32_t
+#define MH_LEN_T uint32_t
 
-/** Length of BH_KLEN_T and BH_LEN_T. */
-#define BH_KLEN_SIZE sizeof(BH_KLEN_T)
-#define BH_LEN_SIZE sizeof(BH_LEN_T)
+/** Length of MH_KLEN_T and MH_LEN_T. */
+#define MH_KLEN_SIZE sizeof(MH_KLEN_T)
+#define MH_LEN_SIZE sizeof(MH_LEN_T)
 
 /** Size of one hashed key, in bytes. */
-#define BH_DIGEST_SIZE 8
+#define MH_DIGEST_SIZE 8
 
 /** Size of one index level. */
-#define BH_INDEX_SIZE 16
+#define MH_INDEX_SIZE 16
 
 /** \name Result codes after pair is stored or fetched:
 	These all go into the result property of the Response object. */
 //@{
 /** Error occured during operation. */
-#define BH_ERR 0
+#define MH_ERR 0
 /** Result was okay (used only in fetch()). */
-#define BH_OK 1
+#define MH_OK 1
 /** Result was add (key was unique). */
-#define BH_ADD 1
+#define MH_ADD 1
 /** Result was replace (key existed and value was overwritten). */
-#define BH_REPLACE 2
+#define MH_REPLACE 2
 //@}
 
 /** \name Signatures used to identify tags: */
 //@{
 /** Signature used for identifying index tags. */
-#define BH_SIG_INDEX 'I'
+#define MH_SIG_INDEX 'I'
 /** Signature used for identifying bucket tags. */
-#define BH_SIG_BUCKET 'B'
+#define MH_SIG_BUCKET 'B'
 //@}
 
 class Stats {
@@ -67,7 +67,7 @@ public:
 	unsigned char result;
 	unsigned char flags;
 	unsigned char *content; /**< Pointer to content.  Can be binary or string. */
-	BH_LEN_T contentLength; /**< Length of content. */
+	MH_LEN_T contentLength; /**< Length of content. */
 	
 	Response() {
 		content = NULL;
@@ -90,15 +90,15 @@ class Index : public Tag {
 public:
 	// an index represents 4 bits of the key hash, and has 16 slots
 	// each slot may point to another index, or a bucket linked list
-	Tag *data[BH_INDEX_SIZE];
+	Tag *data[MH_INDEX_SIZE];
 	
 	Index() {
 		init();
 	}
 	
 	void init() {
-		type = BH_SIG_INDEX;
-		for (int idx = 0; idx < BH_INDEX_SIZE; idx++) data[idx] = NULL;
+		type = MH_SIG_INDEX;
+		for (int idx = 0; idx < MH_INDEX_SIZE; idx++) data[idx] = NULL;
 	}
 };
 
@@ -115,7 +115,7 @@ public:
 	}
 	
 	void init() {
-		type = BH_SIG_BUCKET;
+		type = MH_SIG_BUCKET;
 		flags = 0;
 		next = NULL;
 	}
@@ -167,11 +167,11 @@ public:
 	}
 	
 	// public methods:
-	Response store(unsigned char *key, BH_KLEN_T keyLength, unsigned char *content, BH_LEN_T contentLength, unsigned char flags = 0);
-	Response fetch(unsigned char *key, BH_KLEN_T keyLength);
-	Response remove(unsigned char *key, BH_KLEN_T keyLength);
+	Response store(unsigned char *key, MH_KLEN_T keyLength, unsigned char *content, MH_LEN_T contentLength, unsigned char flags = 0);
+	Response fetch(unsigned char *key, MH_KLEN_T keyLength);
+	Response remove(unsigned char *key, MH_KLEN_T keyLength);
 	Response firstKey();
-	Response nextKey(unsigned char *key, BH_KLEN_T keyLength);
+	Response nextKey(unsigned char *key, MH_KLEN_T keyLength);
 	
 	void clear();
 	void clear(unsigned char slice);
@@ -179,43 +179,43 @@ public:
 	// internal methods:
 	void clearTag(Tag *tag);
 	void reindexBucket(Bucket *bucket, Index *index, unsigned char digestIndex);
-	void traverseTag(Response *resp, Tag *tag, unsigned char *key, BH_KLEN_T keyLength, unsigned char *digest, unsigned char digestIndex, unsigned char *returnNext);
+	void traverseTag(Response *resp, Tag *tag, unsigned char *key, MH_KLEN_T keyLength, unsigned char *digest, unsigned char digestIndex, unsigned char *returnNext);
 	
-	int bucketKeyEquals(Bucket *bucket, unsigned char *key, BH_KLEN_T keyLength) {
+	int bucketKeyEquals(Bucket *bucket, unsigned char *key, MH_KLEN_T keyLength) {
 		// compare key to bucket key
 		unsigned char *bucketData = ((unsigned char *)bucket) + sizeof(Bucket);
-		if (keyLength != ((BH_KLEN_T *)bucketData)[0]) return 0;
-		unsigned char *bucketKey = bucketData + BH_KLEN_SIZE;
+		if (keyLength != ((MH_KLEN_T *)bucketData)[0]) return 0;
+		unsigned char *bucketKey = bucketData + MH_KLEN_SIZE;
 		return (int)!memcmp( (void *)key, (void *)bucketKey, (size_t)keyLength );
 	}
 	
-	BH_KLEN_T bucketGetKeyLength(Bucket *bucket) {
+	MH_KLEN_T bucketGetKeyLength(Bucket *bucket) {
 		// get bucket key length
 		unsigned char *bucketData = ((unsigned char *)bucket) + sizeof(Bucket);
-		BH_KLEN_T *tempKL = (BH_KLEN_T *)bucketData;
+		MH_KLEN_T *tempKL = (MH_KLEN_T *)bucketData;
 		return tempKL[0];
 	}
 	
 	unsigned char *bucketGetKey(Bucket *bucket) {
 		// get pointer to bucket key
 		unsigned char *bucketData = ((unsigned char *)bucket) + sizeof(Bucket);
-		return bucketData + BH_KLEN_SIZE;
+		return bucketData + MH_KLEN_SIZE;
 	}
 	
-	BH_LEN_T bucketGetContentLength(Bucket *bucket) {
+	MH_LEN_T bucketGetContentLength(Bucket *bucket) {
 		// get bucket content (value) length
 		unsigned char *bucketData = ((unsigned char *)bucket) + sizeof(Bucket);
-		unsigned char *tempCL = bucketData + BH_KLEN_SIZE + ((BH_KLEN_T *)bucketData)[0];
-		return ((BH_LEN_T *)tempCL)[0];
+		unsigned char *tempCL = bucketData + MH_KLEN_SIZE + ((MH_KLEN_T *)bucketData)[0];
+		return ((MH_LEN_T *)tempCL)[0];
 	}
 	
 	unsigned char *bucketGetContent(Bucket *bucket) {
 		// get pointer to bucket content (value)
 		unsigned char *bucketData = ((unsigned char *)bucket) + sizeof(Bucket);
-		return bucketData + BH_KLEN_SIZE + ((BH_KLEN_T *)bucketData)[0] + BH_LEN_SIZE;
+		return bucketData + MH_KLEN_SIZE + ((MH_KLEN_T *)bucketData)[0] + MH_LEN_SIZE;
 	}
 	
-	void digestKey(unsigned char *key, BH_KLEN_T keyLength, unsigned char *digest) {
+	void digestKey(unsigned char *key, MH_KLEN_T keyLength, unsigned char *digest) {
 		// Create 32-bit digest of custom key using DJB2 algorithm.
 		// Return as 8 separate bytes (4 bits each) in unsigned char array
 		uint32_t hash = 5381;

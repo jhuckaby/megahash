@@ -4,17 +4,17 @@
 
 var MegaHash = require('bindings')('megahash').MegaHash;
 
-const BH_TYPE_BUFFER = 0;
-const BH_TYPE_STRING = 1;
-const BH_TYPE_NUMBER = 2;
-const BH_TYPE_BOOLEAN = 3;
-const BH_TYPE_OBJECT = 4;
-const BH_TYPE_BIGINT = 5;
-const BH_TYPE_NULL = 6;
+const MH_TYPE_BUFFER = 0;
+const MH_TYPE_STRING = 1;
+const MH_TYPE_NUMBER = 2;
+const MH_TYPE_BOOLEAN = 3;
+const MH_TYPE_OBJECT = 4;
+const MH_TYPE_BIGINT = 5;
+const MH_TYPE_NULL = 6;
 
 MegaHash.prototype.set = function(key, value) {
 	// store key/value in hash, auto-convert format to buffer
-	var flags = BH_TYPE_BUFFER;
+	var flags = MH_TYPE_BUFFER;
 	var keyBuf = Buffer.isBuffer(key) ? key : Buffer.from(''+key, 'utf8');
 	if (!keyBuf.length) throw new Error("Key must have length");
 	var valueBuf = value;
@@ -22,30 +22,30 @@ MegaHash.prototype.set = function(key, value) {
 	if (!Buffer.isBuffer(valueBuf)) {
 		if (valueBuf === null) {
 			valueBuf = Buffer.alloc(0);
-			flags = BH_TYPE_NULL;
+			flags = MH_TYPE_NULL;
 		}
 		else if (typeof(valueBuf) == 'object') {
 			valueBuf = Buffer.from( JSON.stringify(value) );
-			flags = BH_TYPE_OBJECT;
+			flags = MH_TYPE_OBJECT;
 		}
 		else if (typeof(valueBuf) == 'number') {
 			valueBuf = Buffer.alloc(8);
 			valueBuf.writeDoubleBE( value );
-			flags = BH_TYPE_NUMBER;
+			flags = MH_TYPE_NUMBER;
 		}
 		else if (typeof(valueBuf) == 'bigint') {
 			valueBuf = Buffer.alloc(8);
 			valueBuf.writeBigInt64BE( value );
-			flags = BH_TYPE_BIGINT;
+			flags = MH_TYPE_BIGINT;
 		}
 		else if (typeof(valueBuf) == 'boolean') {
 			valueBuf = Buffer.alloc(1);
 			valueBuf.writeUInt8( value ? 1 : 0 );
-			flags = BH_TYPE_BOOLEAN;
+			flags = MH_TYPE_BOOLEAN;
 		}
 		else {
 			valueBuf = Buffer.from(''+value, 'utf8');
-			flags = BH_TYPE_STRING;
+			flags = MH_TYPE_STRING;
 		}
 	}
 	
@@ -61,27 +61,27 @@ MegaHash.prototype.get = function(key) {
 	if (!value || !value.flags) return value;
 	
 	switch (value.flags) {
-		case BH_TYPE_NULL:
+		case MH_TYPE_NULL:
 			value = null;
 		break;
 		
-		case BH_TYPE_OBJECT: 
+		case MH_TYPE_OBJECT: 
 			value = JSON.parse( value.toString() ); 
 		break;
 		
-		case BH_TYPE_NUMBER:
+		case MH_TYPE_NUMBER:
 			value = value.readDoubleBE(); break;
 		break;
 		
-		case BH_TYPE_BIGINT:
+		case MH_TYPE_BIGINT:
 			value = value.readBigInt64BE(); break;
 		break;
 		
-		case BH_TYPE_BOOLEAN:
+		case MH_TYPE_BOOLEAN:
 			value = (value.readUInt8() == 1) ? true : false;
 		break;
 		
-		case BH_TYPE_STRING:
+		case MH_TYPE_STRING:
 			value = value.toString();
 		break;
 	}

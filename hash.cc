@@ -47,21 +47,23 @@ MegaHash::~MegaHash() {
 
 Napi::Value MegaHash::Set(const Napi::CallbackInfo& info) {
 	// store key/value pair, no return value
+	Napi::Env env = info.Env();
+	
 	Napi::Buffer<unsigned char> keyBuf = info[0].As<Napi::Buffer<unsigned char>>();
 	unsigned char *key = keyBuf.Data();
-	BH_KLEN_T keyLength = (BH_KLEN_T)keyBuf.Length();
+	MH_KLEN_T keyLength = (MH_KLEN_T)keyBuf.Length();
 	
 	Napi::Buffer<unsigned char> valueBuf = info[1].As<Napi::Buffer<unsigned char>>();
 	unsigned char *value = valueBuf.Data();
-	BH_LEN_T valueLength = (BH_LEN_T)valueBuf.Length();
+	MH_LEN_T valueLength = (MH_LEN_T)valueBuf.Length();
 	
 	unsigned char flags = 0;
 	if (info.Length() > 2) {
 		flags = (unsigned char)info[2].As<Napi::Number>().Uint32Value();
 	}
 	
-	this->hash->store( key, keyLength, value, valueLength, flags );
-	return info.Env().Undefined();
+	Response resp = this->hash->store( key, keyLength, value, valueLength, flags );
+	return Napi::Number::New(env, (double)resp.result);
 }
 
 Napi::Value MegaHash::Get(const Napi::CallbackInfo& info) {
@@ -70,12 +72,14 @@ Napi::Value MegaHash::Get(const Napi::CallbackInfo& info) {
 	
 	Napi::Buffer<unsigned char> keyBuf = info[0].As<Napi::Buffer<unsigned char>>();
 	unsigned char *key = keyBuf.Data();
-	BH_KLEN_T keyLength = (BH_KLEN_T)keyBuf.Length();
+	MH_KLEN_T keyLength = (MH_KLEN_T)keyBuf.Length();
 	
 	Response resp = this->hash->fetch( key, keyLength );
 	
-	if (resp.result == BH_OK) {
+	if (resp.result == MH_OK) {
 		Napi::Buffer<unsigned char> valueBuf = Napi::Buffer<unsigned char>::Copy( env, resp.content, resp.contentLength );
+		if (!valueBuf) return env.Undefined();
+		
 		if (resp.flags) valueBuf.Set( "flags", (double)resp.flags );
 		return valueBuf;
 	}
@@ -88,10 +92,10 @@ Napi::Value MegaHash::Has(const Napi::CallbackInfo& info) {
 	
 	Napi::Buffer<unsigned char> keyBuf = info[0].As<Napi::Buffer<unsigned char>>();
 	unsigned char *key = keyBuf.Data();
-	BH_KLEN_T keyLength = (BH_KLEN_T)keyBuf.Length();
+	MH_KLEN_T keyLength = (MH_KLEN_T)keyBuf.Length();
 	
 	Response resp = this->hash->fetch( key, keyLength );
-	return Napi::Boolean::New(env, (resp.result == BH_OK));
+	return Napi::Boolean::New(env, (resp.result == MH_OK));
 }
 
 Napi::Value MegaHash::Remove(const Napi::CallbackInfo& info) {
@@ -100,10 +104,10 @@ Napi::Value MegaHash::Remove(const Napi::CallbackInfo& info) {
 	
 	Napi::Buffer<unsigned char> keyBuf = info[0].As<Napi::Buffer<unsigned char>>();
 	unsigned char *key = keyBuf.Data();
-	BH_KLEN_T keyLength = (BH_KLEN_T)keyBuf.Length();
+	MH_KLEN_T keyLength = (MH_KLEN_T)keyBuf.Length();
 	
 	Response resp = this->hash->remove( key, keyLength );
-	return Napi::Boolean::New(env, (resp.result == BH_OK));
+	return Napi::Boolean::New(env, (resp.result == MH_OK));
 }
 
 Napi::Value MegaHash::Clear(const Napi::CallbackInfo& info) {
@@ -140,7 +144,7 @@ Napi::Value MegaHash::FirstKey(const Napi::CallbackInfo& info) {
 	Napi::Env env = info.Env();
 	
 	Response resp = this->hash->firstKey();
-	if (resp.result == BH_OK) {
+	if (resp.result == MH_OK) {
 		return Napi::Buffer<unsigned char>::Copy( env, resp.content, resp.contentLength );
 	}
 	else return env.Undefined();
@@ -152,10 +156,10 @@ Napi::Value MegaHash::NextKey(const Napi::CallbackInfo& info) {
 	
 	Napi::Buffer<unsigned char> keyBuf = info[0].As<Napi::Buffer<unsigned char>>();
 	unsigned char *key = keyBuf.Data();
-	BH_KLEN_T keyLength = (BH_KLEN_T)keyBuf.Length();
+	MH_KLEN_T keyLength = (MH_KLEN_T)keyBuf.Length();
 	
 	Response resp = this->hash->nextKey( key, keyLength );
-	if (resp.result == BH_OK) {
+	if (resp.result == MH_OK) {
 		return Napi::Buffer<unsigned char>::Copy( env, resp.content, resp.contentLength );
 	}
 	else return env.Undefined();

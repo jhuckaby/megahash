@@ -18,6 +18,7 @@
 		+ [Null](#null)
 	* [Deleting and Clearing](#deleting-and-clearing)
 	* [Iterating over Keys](#iterating-over-keys)
+	* [Error Handling](#error-handling)
 	* [Hash Stats](#hash-stats)
 - [API](#api)
 	* [set](#set)
@@ -248,6 +249,17 @@ while (key) {
 
 Please note that if new keys are added to the hash while an iteration is in progress, it may *miss* some keys, due to indexing (i.e. reshuffling the position of keys).
 
+## Error Handling
+
+If a hash operation fails (i.e. out of memory), then [set()](#set) will return `0`.  You can check for this and bubble up your own error.  Example:
+
+```js
+var result = hash.set( "hello", "there" );
+if (!result) {
+	throw new Error("Failed to write to MegaHash: Out of memory");
+}
+```
+
 ## Hash Stats
 
 To get current statistics about the hash, including the number of keys, raw data size, and other internals, call [stats()](#stats).  Example:
@@ -286,7 +298,7 @@ Here is the API reference for the MegaHash instance methods:
 ## set
 
 ```
-VOID set( KEY, VALUE )
+NUMBER set( KEY, VALUE )
 ```
 
 Set or replace one key/value in the hash.  Ideally both key and value are passed as Buffers, as this provides the highest performance.  Most built-in data types are supported of course, but they are converted to buffers one way or the other.  Example use:
@@ -294,6 +306,14 @@ Set or replace one key/value in the hash.  Ideally both key and value are passed
 ```js
 hash.set( "key1", "value1" );
 ```
+
+The `set()` method actually returns a number, which will be `0`, `1` or `2`.  They each have a different meaning:
+
+| Result | Description |
+|--------|-------------|
+| `0` | An error occurred (out of memory). |
+| `1` | A key was added to the hash (i.e. unique key). |
+| `2` | An existing key was replaced in the hash. |
 
 ## get
 
@@ -306,6 +326,8 @@ Fetch a value given a key.  Since the value data type is stored internally as a 
 ```js
 var value = hash.get("key1");
 ```
+
+If the key is not found, `get()` will return `undefined`.
 
 ## has
 

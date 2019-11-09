@@ -1,6 +1,6 @@
 {
 	"name": "megahash",
-	"version": "1.0.2",
+	"version": "1.0.3",
 	"description": "A super-fast C++ hash table with Node.js wrapper.",
 	"author": "Joseph Huckaby <jhuckaby@gmail.com>",
 	"homepage": "https://github.com/jhuckaby/megahash",
