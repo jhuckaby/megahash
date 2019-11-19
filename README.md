@@ -32,6 +32,7 @@
 - [Internals](#internals)
 	* [Limits](#limits)
 	* [Memory Overhead](#memory-overhead)
+- [Caveats](#caveats)
 - [Future](#future)
 - [License](#license)
 
@@ -39,7 +40,7 @@
 
 # Overview
 
-**MegaHash** is a super-fast C++ [hash table](https://en.wikipedia.org/wiki/Hash_table) with a Node.js wrapper, capable of storing over 1 billion keys, has read/write speeds above 500,000 keys per second (depending on CPU speed and total keys in hash), and relatively low memory overhead.  This module is designed primarily as a replacement for [ES6 Maps](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Map), which seem to crash Node.js after about 15 million keys.
+**MegaHash** is a super-fast C++ [hash table](https://en.wikipedia.org/wiki/Hash_table) with a Node.js wrapper, capable of storing over 1 billion keys, has read/write speeds above 500,000 keys per second (depending on CPU speed and total keys in hash), and relatively low memory overhead.  This module is designed primarily as a replacement for [ES6 Maps](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Map), which seem to crash Node.js after about 15 million keys.  However, please note that there are some [caveats](#caveats).
 
 I do know of the [hashtable](https://www.npmjs.com/package/hashtable) module on NPM, and have used it in the past.  The problem is, that implementation stores everything on the V8 heap, so it runs into serious performance dips with tens of millions of keys (see below).  Also, it seems like the author may have abandoned it (open issues are going unanswered), and it doesn't compile on Node v12.
 
@@ -448,6 +449,14 @@ At 100 million keys, the total memory overhead is approximately 3.3 GB.  At 1 bi
 ![](https://pixlcore.com/software/megahash/docs/mem-1b-4bit.png)
 
 This is primarily due to the per-bucket "metadata" storage, which is currently adding 24 bytes per key.  Frankly, at least 7 bytes of this is total waste, due to C++ memory alignment.  I'm sure there are many potential improvements to be made here, but for now, it works well enough for my uses.
+
+# Caveats
+
+Please note that Megahash is **not** a complete drop-in replacement for [ES6 Maps](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Map).  Specifically:
+
+- Objects are serialized to JSON when passed as values to Megahash, and unserialized when fetched.  This is because data is stored outside the V8 heap in C++ memory, so everything is internally converted to/from Buffers.  That means object serialization.
+- Only a subset of the ES6 Map interface is implemented currently.  Specifically [get](#get), [set](#set), [has](#has), [delete](#delete), [clear](#clear) and [length](#length).
+	- Also note that [length](#length) is a method, not a property.
 
 # Future
 
