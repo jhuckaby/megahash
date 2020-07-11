@@ -462,6 +462,45 @@ module.exports = {
 			test.ok(stats.numKeys === 10000, 'Correct keys in stats: ' + stats.numKeys);
 			test.ok(stats.numIndexes > 1, 'More indexes in stats: ' + stats.numIndexes);
 			test.done();
+		},
+		
+		function testSimilarDigests(test) {
+			// test two keys with similar computed digests
+			var hash = new MegaHash();
+			
+			for (var idx = 0; idx < 100000; idx++) {
+				hash.set( "key" + idx, "value here " + idx );
+			}
+			
+			var key1 = "4723640122";
+			var key2 = "4723640123";
+			
+			hash.set(key1, "value1");
+			hash.set(key2, "value2");
+			
+			test.ok( hash.get(key1) === "value1", "Key '" + key1 + "' does not equal expected value.");
+			test.ok( hash.get(key2) === "value2", "Key '" + key2 + "' does not equal expected value.");
+			test.done();
+		},
+		
+		function testSimilarDigestsWithReplace(test) {
+			// test two keys with similar computed digests, replacing one
+			var hash = new MegaHash();
+			
+			for (var idx = 0; idx < 100000; idx++) {
+				hash.set( "key" + idx, "value here " + idx );
+			}
+			
+			var key1 = "4723640122";
+			var key2 = "4723640123";
+			
+			hash.set(key1, "value1");
+			hash.set(key2, "value2");
+			hash.set(key1, "value1_REPLACED"); // replace first value after setting second
+			
+			test.ok( hash.get(key1) === "value1_REPLACED", "Key '" + key1 + "' does not equal expected value.");
+			test.ok( hash.get(key2) === "value2", "Key '" + key2 + "' does not equal expected value.");
+			test.done();
 		}
 		
 	]

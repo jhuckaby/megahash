@@ -69,6 +69,8 @@ Response Hash::store(unsigned char *key, MH_KLEN_T keyLength, unsigned char *con
 					newBucket = (Bucket *)payload;
 					newBucket->init();
 					newBucket->flags = flags;
+					newBucket->next = bucket->next;
+					
 					if (lastBucket) lastBucket->next = newBucket;
 					else level->data[ch] = (Tag *)newBucket;
 					
