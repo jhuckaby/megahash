@@ -70,11 +70,11 @@ MegaHash.prototype.get = function(key) {
 		break;
 		
 		case MH_TYPE_NUMBER:
-			value = value.readDoubleBE(); break;
+			value = value.readDoubleBE();
 		break;
 		
 		case MH_TYPE_BIGINT:
-			value = value.readBigInt64BE(); break;
+			value = value.readBigInt64BE();
 		break;
 		
 		case MH_TYPE_BOOLEAN:
