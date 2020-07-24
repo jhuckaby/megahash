@@ -17,8 +17,8 @@ declare class MegaHash {
 	set(key: string | Buffer, value: MegaHash.TAvailableValue): 0 | 1 | 2;
 	get<T extends MegaHash.TAvailableValue>(key: string | Buffer): T | undefined;
 	has(key: string | Buffer): boolean;
-    delete(key: string | Buffer): boolean;
-    remove(key: string | Buffer): boolean;
+	delete(key: string | Buffer): boolean;
+	remove(key: string | Buffer): boolean;
 	clear(): void;
 	nextKey(key?: string | Buffer): string | undefined;
 	length(): number;
