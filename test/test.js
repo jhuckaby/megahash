@@ -27,6 +27,14 @@ module.exports = {
 			test.ok(value === "there", 'Basic string set/get');
 			test.done();
 		},
+
+		function testEmptyString(test) {
+			var hash = new MegaHash();
+			hash.set("hello", "");
+			var value = hash.get("hello");
+			test.ok(value === "", 'Empty string set/get');
+			test.done();
+		},
 		
 		function testUnicodeValue(test) {
 			var hash = new MegaHash();
@@ -149,7 +157,32 @@ module.exports = {
 			
 			hash.set( "big2", -9007199254740992n );
 			test.ok( hash.get("big2") === -9007199254740992n, "Negative BigInt came through unscathed" );
+
+			hash.set( "big3", 90071998759837958703870284254740993n );
+			test.ok( hash.get("big3") === 90071998759837958703870284254740993n, "Very big positive BigInt came through unscathed" );
 			
+			hash.set( "big4", -90071998759837958703870284254740993n );
+			test.ok( hash.get("big4") === -90071998759837958703870284254740993n, "Very big negative BigInt came through unscathed" );
+
+			test.done();
+		},
+
+		function testNaN(test) {
+			var hash = new MegaHash();
+			hash.set("nope", NaN);
+			test.ok( Number.isNaN(hash.get("nope")), "NaN" );
+			test.done();
+		},
+
+		function testInfinity(test) {
+			var hash = new MegaHash();
+
+			hash.set("infinity", Infinity);
+			test.ok( hash.get("infinity") === Infinity, "Positive infinity" );
+
+			hash.set("infinity2", -Infinity);
+			test.ok( hash.get("infinity2") === -Infinity, "Negative infinity" );
+
 			test.done();
 		},
 		
@@ -157,6 +190,22 @@ module.exports = {
 			var hash = new MegaHash();
 			hash.set("nope", null);
 			test.ok( hash.get("nope") === null, "Null is null" );
+			test.done();
+		},
+
+		function testUndefined(test) {
+			var hash = new MegaHash();
+			hash.set("nope", undefined);
+			test.ok( hash.get("nope") === undefined, "Undefined" );
+			test.done();
+		},
+
+		function testFunction(test) {
+			var hash = new MegaHash();
+			var f = function(a) { return 10; };
+			hash.set("function", f);
+			var result = hash.get("function");
+			test.ok( typeof result === "function" && result.toString() === f.toString(), "Function serialization" );
 			test.done();
 		},
 		

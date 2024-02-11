@@ -52,16 +52,22 @@ Napi::Value MegaHash::Set(const Napi::CallbackInfo& info) {
 	Napi::Buffer<unsigned char> keyBuf = info[0].As<Napi::Buffer<unsigned char>>();
 	unsigned char *key = keyBuf.Data();
 	MH_KLEN_T keyLength = (MH_KLEN_T)keyBuf.Length();
-	
-	Napi::Buffer<unsigned char> valueBuf = info[1].As<Napi::Buffer<unsigned char>>();
-	unsigned char *value = valueBuf.Data();
-	MH_LEN_T valueLength = (MH_LEN_T)valueBuf.Length();
-	
+
 	unsigned char flags = 0;
 	if (info.Length() > 2) {
 		flags = (unsigned char)info[2].As<Napi::Number>().Uint32Value();
 	}
+
+	// short circuit flag-only values
+	if(info[1].IsUndefined()) {
+		Response resp = this->hash->store( key, keyLength, 0, 0, flags );
+		return Napi::Number::New(env, (double)resp.result);
+	}
 	
+	Napi::Buffer<unsigned char> valueBuf = info[1].As<Napi::Buffer<unsigned char>>();
+	unsigned char *value = valueBuf.Data();
+	MH_LEN_T valueLength = (MH_LEN_T)valueBuf.Length();
+
 	Response resp = this->hash->store( key, keyLength, value, valueLength, flags );
 	return Napi::Number::New(env, (double)resp.result);
 }
@@ -77,6 +83,12 @@ Napi::Value MegaHash::Get(const Napi::CallbackInfo& info) {
 	Response resp = this->hash->fetch( key, keyLength );
 	
 	if (resp.result == MH_OK) {
+
+		// short circuit flag-only values
+		if(!resp.contentLength && resp.flags) {
+			return Napi::Number::New(env, (double)resp.flags);
+		}
+
 		Napi::Buffer<unsigned char> valueBuf = Napi::Buffer<unsigned char>::Copy( env, resp.content, resp.contentLength );
 		if (!valueBuf) return env.Undefined();
 		
