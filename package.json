@@ -1,6 +1,6 @@
 {
 	"name": "megahash",
-	"version": "1.0.5",
+	"version": "1.0.6",
 	"description": "A super-fast C++ hash table with Node.js wrapper.",
 	"author": "Joseph Huckaby <jhuckaby@gmail.com>",
 	"homepage": "https://github.com/jhuckaby/megahash",
@@ -21,10 +21,10 @@
 	"gypfile": true,
 	"dependencies": {
 		"bindings": "^1.5.0",
-		"node-addon-api": "^3.1.0"
+		"node-addon-api": "^8.7.0"
 	},
 	"devDependencies": {
-		"pixl-unit": "^1.0.0"
+		"pixl-unit": "^2.0.0"
 	},
 	"scripts": {
 		"test": "pixl-unit test/test.js"
