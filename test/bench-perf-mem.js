@@ -81,7 +81,7 @@ for (idx = 1; idx <= MAX_KEYS; idx++) {
 		// pause and do some reads
 		now = Date.now();
 		last_report = now;
-		for (var idy = idx - METRICS_EVERY; idy < idx; idy++) {
+		for (var idy = idx - METRICS_EVERY + 1; idy <= idx; idy++) {
 			key = '' + idy;
 			hash.get(key);
 		}

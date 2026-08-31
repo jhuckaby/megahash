@@ -82,9 +82,10 @@ for (idx = 1; idx <= MAX_KEYS; idx++) {
 		// pause and do some reads
 		now = Date.now();
 		last_report = now;
-		for (var idy = idx - METRICS_EVERY; idy < idx; idy++) {
-			key = '' + idy;
-			hash.get(key);
+		for (var idy = idx - METRICS_EVERY + 1; idy <= idx; idy++) {
+			// Keys are stored in base-36 format above, so use the same format for reads.
+			keyBuf = Buffer.from( idy.toString(36) );
+			hash.get(keyBuf);
 		}
 		now = Date.now();
 		read_iter_sec = Math.floor( METRICS_EVERY / ((now - last_report) / 1000) );
