@@ -37,7 +37,7 @@ metrics.info.versions.mega = require('../package.json').version;
 
 var output_name = args.name || '';
 if (!output_name) {
-	output_name = 'v' + metrics.info.versions.mega + '-' + metrics.info.platform + '-ideal-' + short_num(MAX_KEYS);
+	output_name = 'v' + metrics.info.versions.mega + '-' + metrics.info.platform + '-' + metrics.info.arch + '-ideal-' + short_num(MAX_KEYS);
 }
 print("\n");
 print("Test Name: " + output_name + "\n");
