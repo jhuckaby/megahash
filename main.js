@@ -118,9 +118,13 @@ MegaHash.prototype.nextKey = function(key) {
 	}
 };
 
-MegaHash.prototype.length = function() {
-	// shortcut for numKeys
-	return this.stats().numKeys;
-}
+Object.defineProperty(MegaHash.prototype, 'length', {
+	get() {
+		// shortcut for numKeys
+		return this.stats().numKeys;
+	},
+  	enumerable: true,
+  	configurable: true
+});
 
 module.exports = MegaHash;
