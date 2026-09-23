@@ -49,6 +49,19 @@ Napi::Value MegaHash::Set(const Napi::CallbackInfo& info) {
 	// store key/value pair, no return value
 	Napi::Env env = info.Env();
 	
+	if (!info[0].IsBuffer()) {
+		Napi::TypeError::New(env, "Key must be a buffer").ThrowAsJavaScriptException();
+		return env.Undefined();
+	}
+	if (!info[1].IsBuffer()) {
+		Napi::TypeError::New(env, "Value must be a buffer").ThrowAsJavaScriptException();
+		return env.Undefined();
+	}
+	if (info.Length() > 2 && !info[2].IsNumber()) {
+		Napi::TypeError::New(env, "Flags must be a number").ThrowAsJavaScriptException();
+		return env.Undefined();
+	}
+	
 	Napi::Buffer<unsigned char> keyBuf = info[0].As<Napi::Buffer<unsigned char>>();
 	unsigned char *key = keyBuf.Data();
 	MH_KLEN_T keyLength = (MH_KLEN_T)keyBuf.Length();
@@ -102,6 +115,11 @@ Napi::Value MegaHash::Remove(const Napi::CallbackInfo& info) {
 	// remove key/value pair, free up memory
 	Napi::Env env = info.Env();
 	
+	if (!info[0].IsBuffer()) {
+		Napi::TypeError::New(env, "Key must be a buffer").ThrowAsJavaScriptException();
+		return env.Undefined();
+	}
+	
 	Napi::Buffer<unsigned char> keyBuf = info[0].As<Napi::Buffer<unsigned char>>();
 	unsigned char *key = keyBuf.Data();
 	MH_KLEN_T keyLength = (MH_KLEN_T)keyBuf.Length();
@@ -117,12 +135,20 @@ Napi::Value MegaHash::Clear(const Napi::CallbackInfo& info) {
 	
 	if (info.Length() == 2) {
 		// clear thin slice
+		if (!info[0].IsNumber() || !info[1].IsNumber()) {
+			Napi::TypeError::New(info.Env(), "Slice arguments must be numbers").ThrowAsJavaScriptException();
+			return info.Env().Undefined();
+		}
 		slice1 = (unsigned char)info[0].As<Napi::Number>().Uint32Value();
 		slice2 = (unsigned char)info[1].As<Napi::Number>().Uint32Value();
 		this->hash->clear( slice1, slice2 );
 	}
 	else if (info.Length() == 1) {
 		// clear thick slice
+		if (!info[0].IsNumber()) {
+			Napi::TypeError::New(info.Env(), "Slice argument must be a number").ThrowAsJavaScriptException();
+			return info.Env().Undefined();
+		}
 		slice1 = (unsigned char)info[0].As<Napi::Number>().Uint32Value();
 		this->hash->clear( slice1 );
 	}
